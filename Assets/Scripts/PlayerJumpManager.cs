@@ -13,6 +13,7 @@ public class PlayerJumpManager : MonoBehaviour
   float currentJumpForce = 0f;
   float jumpForceChangeSpeed = 0.5f;
   bool isIncreasingJumpForce = true;
+  bool canJump = false;
 
   void Awake()
   {
@@ -25,6 +26,7 @@ public class PlayerJumpManager : MonoBehaviour
   {
     if (state == GameState.Grabbing)
     {
+      canJump = false;
       StartCoroutine(PrepareJump());
     }
   }
@@ -36,13 +38,15 @@ public class PlayerJumpManager : MonoBehaviour
 
   void Update()
   {
-    if (GameManager.instance.gameState == GameState.Grabbing && Input.GetKeyDown("r"))
+    if (GameManager.instance.gameState == GameState.Grabbing && Input.GetKeyDown("space") && canJump)
     {
-      Debug.Log("currentJumpForce" + currentJumpForce);
+      Debug.Log("currentJumpForce " + currentJumpForce);
       rb.gravityScale = 1;
       Physics2D.gravity = new Vector2(0f, -9.81f);
       rb.AddForce(new Vector2 (jumpXPosition, 1f) * currentJumpForce, ForceMode2D.Impulse);
       GameManager.instance.UpdateGameState(GameState.Jumping);
+      StopCoroutine(PrepareJump());
+      canJump = false;
     }
   }
 
@@ -75,6 +79,7 @@ public class PlayerJumpManager : MonoBehaviour
       float fill = currentJumpForce / maxJumpForce;
       PowerBarMask.fillAmount = fill;
       yield return new WaitForSeconds(0.02f);
+      canJump = true;
     }
     
     yield return null;
