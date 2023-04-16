@@ -7,13 +7,20 @@ public class PlayerJumpManager : MonoBehaviour
 {
   public static PlayerJumpManager instance;
   public Image PowerBarMask;
+  public Image DirectionArrow;
   public float jumpXPosition = 1f;
   private Rigidbody2D rb;
   float maxJumpForce = 9f;
   float currentJumpForce = 0f;
   float jumpForceChangeSpeed = 0.5f;
   bool isIncreasingJumpForce = true;
+  public float maxJumpDirection = 1f;
+  float currentJumpDirection = 0f;
+  float jumpDirectionChangeSpeed = 0.1f;
+  bool isIncreasingJumpDirection = true;
+  bool isChoosingDirection = true;
   bool canJump = false;
+  bool canChooseDirection = false;
 
   void Awake()
   {
@@ -26,8 +33,10 @@ public class PlayerJumpManager : MonoBehaviour
   {
     if (state == GameState.Grabbing)
     {
+      isChoosingDirection = true;
+      canChooseDirection = false;
       canJump = false;
-      StartCoroutine(PrepareJump());
+      PrepareJump();
     }
   }
 
@@ -38,26 +47,34 @@ public class PlayerJumpManager : MonoBehaviour
 
   void Update()
   {
-    if (GameManager.instance.gameState == GameState.Grabbing && Input.GetKeyDown("space") && canJump)
+    if (GameManager.instance.gameState == GameState.Grabbing && Input.GetKeyDown("space") && canChooseDirection && isChoosingDirection)
+    {
+      Debug.Log("currentJumpDirection " + currentJumpDirection);
+      isChoosingDirection = false;
+      canChooseDirection = false;
+      StopCoroutine(PrepareJumpDirection());
+      StartCoroutine(PrepareJumpForce());
+    }
+    else if (GameManager.instance.gameState == GameState.Grabbing && Input.GetKeyDown("space") && canJump && !isChoosingDirection)
     {
       Debug.Log("currentJumpForce " + currentJumpForce);
       rb.gravityScale = 1;
       Physics2D.gravity = new Vector2(0f, -9.81f);
-      rb.AddForce(new Vector2 (jumpXPosition, 1f) * currentJumpForce, ForceMode2D.Impulse);
+      rb.AddForce(new Vector2 (currentJumpDirection, 1f) * currentJumpForce, ForceMode2D.Impulse);
       GameManager.instance.UpdateGameState(GameState.Jumping);
-      StopCoroutine(PrepareJump());
+      StopCoroutine(PrepareJumpForce());
       canJump = false;
     }
   }
 
-  public void Jump(Rigidbody2D rb)
+  public void PrepareJump()
   {
-    StartCoroutine(PrepareJump());
+    StartCoroutine(PrepareJumpDirection());
   }
 
-  IEnumerator PrepareJump()
+  IEnumerator PrepareJumpForce()
   {
-    while(GameManager.instance.gameState == GameState.Grabbing)
+    while(GameManager.instance.gameState == GameState.Grabbing && !isChoosingDirection)
     {
       if (isIncreasingJumpForce)
       {
@@ -78,8 +95,39 @@ public class PlayerJumpManager : MonoBehaviour
       
       float fill = currentJumpForce / maxJumpForce;
       PowerBarMask.fillAmount = fill;
-      yield return new WaitForSeconds(0.02f);
+      yield return new WaitForSeconds(0.03f);
       canJump = true;
+    }
+    
+    yield return null;
+  }
+
+  IEnumerator PrepareJumpDirection()
+  {
+    while(GameManager.instance.gameState == GameState.Grabbing && isChoosingDirection)
+    {
+      if (isIncreasingJumpDirection)
+      {
+        currentJumpDirection += jumpDirectionChangeSpeed;
+        if (currentJumpDirection >= maxJumpDirection)
+        {
+          isIncreasingJumpDirection = false;
+        }
+      }
+      else
+      {
+        currentJumpDirection -= jumpDirectionChangeSpeed;
+        if (currentJumpDirection <= -1)
+        {
+          isIncreasingJumpDirection = true;
+        }
+      }
+      
+      float rotation = currentJumpDirection * -90f;
+      Debug.Log("rotation " + rotation);
+      DirectionArrow.transform.rotation = (Quaternion.Euler(0, 0, rotation));
+      yield return new WaitForSeconds(0.03f);
+      canChooseDirection = true;
     }
     
     yield return null;
